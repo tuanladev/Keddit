@@ -8,6 +8,8 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import com.tuanlat.keddit.R
+import com.tuanlat.keddit.commons.InfiniteScrollListener
+import com.tuanlat.keddit.commons.RedditNews
 import com.tuanlat.keddit.commons.RedditNewsItem
 import com.tuanlat.keddit.commons.RxBaseFragment
 import com.tuanlat.keddit.commons.extensions.inflate
@@ -23,6 +25,7 @@ import rx.schedulers.Schedulers
 class NewsFragment : RxBaseFragment(){
     // Danh sach tin
 //    private var newsList: RecyclerView? = null
+    private var redditNews: RedditNews? = null
 
     private val newsManager by lazy {
         NewsManager()
@@ -50,7 +53,11 @@ class NewsFragment : RxBaseFragment(){
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
         rcList.setHasFixedSize(true)
-        rcList.layoutManager = LinearLayoutManager(context)
+       // rcList.layoutManager = LinearLayoutManager(context)
+        val linearLayout = LinearLayoutManager(context)
+        rcList.layoutManager = linearLayout
+        rcList.clearOnScrollListeners()
+        rcList.addOnScrollListener(InfiniteScrollListener({ requestNews() }, linearLayout))
 
         //khoi tao adapter
         initAdapter()
@@ -84,12 +91,20 @@ class NewsFragment : RxBaseFragment(){
      * request du lieu tu server
      */
     private fun requestNews() {
-        val subscription = newsManager.getNews()
+    //    val subscription = newsManager.getNews()
+        /**
+         * first time will send empty string for after parameter.
+         * Next time we will have redditNews set with the next page to
+         * navigate with the after param.
+         */
+        val subscription = newsManager.getNews(redditNews?.after ?: "")
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe (
                 { retrievedNews ->
-                    (rcList.adapter as NewsAdapter).addNews(retrievedNews as MutableList<RedditNewsItem>)
+                   // (rcList.adapter as NewsAdapter).addNews(retrievedNews as MutableList<RedditNewsItem>)
+                    redditNews = retrievedNews as RedditNews
+                    (rcList.adapter as NewsAdapter).addNews(retrievedNews.news as MutableList<RedditNewsItem>)
                 },
                 { e ->
                     Snackbar.make(rcList, e.message ?: "", Snackbar.LENGTH_LONG).show()
