@@ -6,20 +6,27 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.snackbar.Snackbar
 import com.tuanlat.keddit.R
 import com.tuanlat.keddit.commons.RedditNewsItem
+import com.tuanlat.keddit.commons.RxBaseFragment
 import com.tuanlat.keddit.commons.extensions.inflate
 import com.tuanlat.keddit.features.news.adapter.NewsAdapter
 import kotlinx.android.synthetic.main.news_fragment.*
+import rx.android.schedulers.AndroidSchedulers
+import rx.schedulers.Schedulers
 
 /**
  * Fragment hiển thị tin tức
  */
-class NewsFragment : Fragment(){
+//class NewsFragment : Fragment(){
+class NewsFragment : RxBaseFragment(){
     // Danh sach tin
 //    private var newsList: RecyclerView? = null
 
-
+    private val newsManager by lazy {
+        NewsManager()
+    }
     /**
      * HIển thị
      */
@@ -49,7 +56,7 @@ class NewsFragment : Fragment(){
         initAdapter()
 
 
-        //tao thu 10 doi tuong de test
+        /** tao thu 10 doi tuong de test
         if (savedInstanceState == null) {
             val news = mutableListOf<RedditNewsItem>()
             for (i in 1..10) {
@@ -67,8 +74,30 @@ class NewsFragment : Fragment(){
 
             //them doi tuong vao danh sach
             (rcList.adapter as NewsAdapter).addNews(news)
+        */
+        //request doi tuong
+            requestNews()
+
         }
+
+    /**
+     * request du lieu tu server
+     */
+    private fun requestNews() {
+        val subscription = newsManager.getNews()
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe (
+                { retrievedNews ->
+                    (rcList.adapter as NewsAdapter).addNews(retrievedNews as MutableList<RedditNewsItem>)
+                },
+                { e ->
+                    Snackbar.make(rcList, e.message ?: "", Snackbar.LENGTH_LONG).show()
+                }
+            )
+        subscriptions.add(subscription)
     }
+
 
     private fun initAdapter() {
         if (rcList.adapter == null) {
